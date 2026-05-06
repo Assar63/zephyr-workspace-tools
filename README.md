@@ -12,42 +12,42 @@ What the bootstrap creates and how the three pieces — this tools repo,
 the workspace it builds, and the host-installed Zephyr SDK — relate:
 
 ```mermaid
-graph TB
-    subgraph sdk["~/zephyr-sdk-1.0.1/  (Zephyr SDK, installed separately)"]
-        arm["arm-zephyr-eabi/"]
-        sdk_other["…other toolchains"]
+flowchart TB
+    subgraph tools["zephyr-workspace-tools (this repo)"]
+        direction TB
+        nw[new-workspace]
+        seed[seed-ide-templates]
+        act[activate]
+        bin["tools/ (flash, gdb-server, monitor)"]
+        def["ide-defaults/"]
     end
 
-    subgraph tools_repo["~/projects/zephyr-workspace-tools/  (this repo)"]
-        nw["new-workspace.{sh,ps1}"]
-        seed["seed-ide-templates.{sh,ps1}"]
-        act["activate.{sh,ps1}"]
-        t_bin["tools/{flash,gdb-server,serial-monitor}.{sh,ps1}"]
-        id_def["ide-defaults/{clion,vscode}-init.{sh,ps1}<br/>+ runConfigurations XMLs"]
-    end
-
-    subgraph ws["~/projects/&lt;workspace&gt;/  (Zephyr T2 workspace, created by bootstrap)"]
-        ws_venv[".venv/  (Python venv with west)"]
-        ws_west[".west/config"]
-        ws_act["activate.{sh,ps1}  ⇒  link/copy"]
-        ws_tools["tools/  ⇒  link/copy"]
-        ws_zephyr["zephyr/  (fetched by west update)"]
-        ws_modules["modules/…  (fetched by west update)"]
-        subgraph app["&lt;app&gt;/  (your cloned Zephyr application)"]
-            a_west["west.yml"]
-            a_cmake["CMakeLists.txt"]
-            a_prj["prj.conf"]
-            a_src["src/"]
-            a_idesetup["scripts/ide-setup/<br/>(optional; overrides defaults)"]
+    subgraph ws["workspace dir (created by bootstrap)"]
+        direction TB
+        venv[".venv/"]
+        wcfg[".west/"]
+        link_act["activate ⇢ link/copy"]
+        link_bin["tools/ ⇢ link/copy"]
+        zeph["zephyr/ (west update)"]
+        mods["modules/ (west update)"]
+        subgraph app["app/ (your Zephyr app)"]
+            direction TB
+            files["west.yml · CMakeLists.txt · prj.conf · src/"]
+            idesetup["scripts/ide-setup/ (optional)"]
         end
     end
 
-    nw -.->|bootstraps| ws
-    nw -.->|builds against| sdk
-    act -.->|symlinked / copied as| ws_act
-    t_bin -.->|symlinked / copied as| ws_tools
-    id_def -.->|fallback IDE init| app
-    seed -.->|copies templates into| a_idesetup
+    subgraph sdk["Zephyr SDK (installed separately)"]
+        direction TB
+        tc["arm-zephyr-eabi/"]
+    end
+
+    tools --> ws
+    nw --> sdk
+    act --> link_act
+    bin --> link_bin
+    def --> app
+    seed --> idesetup
 ```
 
 The tools repo lives once per machine; each new project gets its own
