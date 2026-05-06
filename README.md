@@ -137,6 +137,24 @@ package installs if it's on `PATH` (Zephyr's `requirements.txt` pulls
 ~80 packages, ~10× faster), and silently falls back to
 `python3 -m venv` + `pip` otherwise.
 
+#### Heads-up: `pip` vs `uv pip` inside the workspace venv
+
+When the bootstrap takes the **uv path**, `.venv/` is created with
+`uv venv`, which by design **does not** pre-install `pip`. From an
+activated workspace venv:
+
+```sh
+source activate.sh
+pip install some-package          # ❌  command not found
+uv pip install some-package       # ✓
+```
+
+Same flags, same effect — just route through `uv pip` instead. Nothing
+in west or Zephyr's build system calls `pip` at runtime, so this only
+matters if you're following a tutorial that invokes `pip install` from
+inside the venv. On the pip fallback path (no uv on `PATH`), the venv
+has pip as usual.
+
 ### Optional Zephyr SDK install (`--toolchain` / `-Toolchain`)
 
 Off by default. Comma-separated short names — `arm`, `arm64`, `riscv` — or
