@@ -19,6 +19,7 @@ prefers. Both call into the same workspace state.
 | `tools/gdb-server.sh` / `tools/gdb-server.ps1` | Starts openocd as a GDB server on `:3333`. Adjust the `-f board/...cfg` line for other boards. |
 | `tools/serial-monitor.sh` / `tools/serial-monitor.ps1` | Opens the board's serial console. Bash: prefers `tio`/`picocom`, falls back to `stty + cat`. PS: uses `[System.IO.Ports.SerialPort]`; override port with `$env:PORT`. |
 | `ide-defaults/{clion,vscode}-init.{sh,ps1}` | Fallback IDE setup used when the project doesn't ship its own. Generates `.idea/runConfigurations/` (CLion) or `.code-workspace` + `.vscode/tasks.json` (VSCode), skipping anything that already exists. |
+| `seed-ide-templates.{sh,ps1}` | Copies the matching `ide-defaults/` files into a project's `scripts/ide-setup/` so you can fork them and customize. Once seeded, the bootstrap will run the project's copy instead of the in-repo defaults. |
 
 ## Bootstrap a new workspace
 
@@ -101,6 +102,32 @@ bootstrap with `--ide` is an "update missing pieces" pass.
 
 This bootstrap is intentionally IDE-agnostic — no layout conventions are
 hard-coded here. Projects opt in by adding their own `ide-setup/` scripts.
+
+### Forking the defaults into a project
+
+If you want to override the defaults for a specific project rather than
+write from scratch, run:
+
+```sh
+# Linux / macOS
+./seed-ide-templates.sh path/to/your/zephyr-app
+# or only one IDE
+./seed-ide-templates.sh path/to/your/zephyr-app --ide vscode
+```
+
+```powershell
+# Windows
+.\seed-ide-templates.ps1 C:\path\to\your\zephyr-app
+.\seed-ide-templates.ps1 C:\path\to\your\zephyr-app -Ide vscode
+```
+
+This copies `ide-defaults/<ide>-init.{sh,ps1}` (and CLion's
+`runConfigurations/*.xml` data dir) into the project's
+`scripts/ide-setup/`, never overwriting anything already there. After
+that, the bootstrap finds the seeded copy first, so your edits to the
+seeded files take effect.
+
+### Writing a project init script from scratch
 
 A skeleton project init script:
 
