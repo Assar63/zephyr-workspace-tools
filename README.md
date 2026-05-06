@@ -45,6 +45,38 @@ The tools repo lives once per machine; each new project gets its own
 workspace dir that links back to it. The Zephyr SDK is shared across
 all workspaces.
 
+## Prerequisites
+
+The bootstrap is intentionally minimal in what it requires up front —
+everything else (west, Python deps, optionally the Zephyr SDK) it
+installs into the workspace itself.
+
+### Linux / macOS
+
+| Tool | Why | Install |
+|------|-----|---------|
+| `bash` | running `new-workspace.sh` | preinstalled |
+| `git` | cloning the app repo | `apt install git` / `brew install git` |
+| `python3` + `venv` | the workspace's Python venv (skip if you have `uv`) | `apt install python3-venv` / preinstalled on macOS |
+| `uv` *(optional)* | ~10× faster venv + package installs | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| `curl` + `tar` (xz support) | only with `--toolchain` — fetching/extracting SDK tarballs | preinstalled |
+
+### Windows
+
+| Tool | Why | Install |
+|------|-----|---------|
+| PowerShell 5.1+ or 7+ | running `new-workspace.ps1` | preinstalled / `winget install Microsoft.PowerShell` |
+| `git` | cloning the app repo | `winget install Git.Git` |
+| Python 3 (with venv) | workspace's Python venv (skip if you have `uv`) | `winget install Python.Python.3` |
+| `uv` *(optional)* | faster venv + installs | `winget install --id=astral-sh.uv` |
+| `7z.exe` | only with `-Toolchain` — extracting SDK `.7z` archives | `scoop install 7zip` |
+
+The bootstrap does **not** install board-specific runners (openocd,
+pyocd, J-Link, stm32cubeprogrammer) or serial terminals (picocom, tio).
+Those depend on your target hardware and stay your responsibility — for
+the Nucleo-H753ZI you'd want `openocd` from your distro / `scoop install
+openocd`.
+
 ## What's here
 
 Each helper has a bash and a PowerShell variant; pick whichever your shell
