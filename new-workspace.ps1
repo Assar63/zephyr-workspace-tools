@@ -58,8 +58,8 @@ $ErrorActionPreference = 'Stop'
 # Older PS just ignores it.
 $PSNativeCommandUseErrorActionPreference = $true
 
-$DefaultToolsRepoUrl = 'https://github.com/Assar63/zephyr-workspace-tools.git'
-$DefaultToolsRepoDir = Join-Path $env:USERPROFILE 'projects\zephyr-workspace-tools'
+$DefaultToolsRepoUrl = 'https://github.com/Assar63/zephyr-bootstrap.git'
+$DefaultToolsRepoDir = Join-Path $env:USERPROFILE 'projects\zephyr-bootstrap'
 
 $ToolsRepoUrl = if ($env:TOOLS_REPO_URL) { $env:TOOLS_REPO_URL } else { $DefaultToolsRepoUrl }
 $ToolsRepoDir = if ($env:TOOLS_REPO_DIR) { $env:TOOLS_REPO_DIR } else { $DefaultToolsRepoDir }

@@ -1,4 +1,4 @@
-# zephyr-workspace-tools
+# zephyr-bootstrap
 
 Reusable shell helpers for Zephyr T2 workspaces. Not specific to any single
 application — drop into any workspace where you want a consistent
@@ -13,7 +13,7 @@ the workspace it builds, and the host-installed Zephyr SDK — relate:
 
 ```mermaid
 flowchart TB
-    tools["<b>zephyr-workspace-tools</b><br/>(this repo, one per machine)"]
+    tools["<b>zephyr-bootstrap</b><br/>(this repo, one per machine)"]
     ws["<b>workspace dir</b><br/>(created per-project by bootstrap)"]
     sdk["<b>Zephyr SDK</b><br/>(installed separately)"]
 
@@ -72,7 +72,7 @@ prefers. Both call into the same workspace state.
 ./new-workspace.sh --ide clion ~/projects/foo-workspace https://github.com/me/foo.git
 
 # Or one-shot from the published repo:
-curl -sL https://raw.githubusercontent.com/Assar63/zephyr-workspace-tools/main/new-workspace.sh \
+curl -sL https://raw.githubusercontent.com/Assar63/zephyr-bootstrap/main/new-workspace.sh \
     | bash -s -- --ide vscode ~/projects/foo-workspace https://github.com/me/foo.git
 ```
 
@@ -86,7 +86,7 @@ curl -sL https://raw.githubusercontent.com/Assar63/zephyr-workspace-tools/main/n
 .\new-workspace.ps1 C:\dev\foo-workspace https://github.com/me/foo.git -Ide vscode
 
 # Or one-shot from the published repo:
-iwr https://raw.githubusercontent.com/Assar63/zephyr-workspace-tools/main/new-workspace.ps1 -OutFile new-workspace.ps1
+iwr https://raw.githubusercontent.com/Assar63/zephyr-bootstrap/main/new-workspace.ps1 -OutFile new-workspace.ps1
 .\new-workspace.ps1 C:\dev\foo-workspace https://github.com/me/foo.git -Ide vscode
 ```
 
@@ -188,8 +188,8 @@ From inside an existing workspace root (the dir containing `.west/`,
 `zephyr/`, `modules/`, and your app subdir):
 
 ```sh
-ln -s ~/projects/zephyr-workspace-tools/activate.sh activate.sh
-ln -s ~/projects/zephyr-workspace-tools/tools tools
+ln -s ~/projects/zephyr-bootstrap/activate.sh activate.sh
+ln -s ~/projects/zephyr-bootstrap/tools tools
 ```
 
 The scripts use `${BASH_SOURCE[0]}`-relative paths that resolve to the

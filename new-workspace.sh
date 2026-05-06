@@ -7,7 +7,7 @@
 # Examples:
 #   ./new-workspace.sh ~/projects/foo-workspace https://github.com/me/foo.git
 #   ./new-workspace.sh --ide clion ~/projects/foo-workspace https://github.com/me/foo.git
-#   curl -sL https://raw.githubusercontent.com/Assar63/zephyr-workspace-tools/main/new-workspace.sh \
+#   curl -sL https://raw.githubusercontent.com/Assar63/zephyr-bootstrap/main/new-workspace.sh \
 #       | bash -s -- --ide vscode ~/projects/foo-workspace https://github.com/me/foo.git
 #
 # IDE setup (--ide):
@@ -20,15 +20,15 @@
 #   overwrite.
 #
 # Optional env vars:
-#   TOOLS_REPO_URL  git URL of zephyr-workspace-tools.
+#   TOOLS_REPO_URL  git URL of zephyr-bootstrap.
 #   TOOLS_REPO_DIR  local clone path of the tools repo
-#                   (default: $HOME/projects/zephyr-workspace-tools).
+#                   (default: $HOME/projects/zephyr-bootstrap).
 #                   Reused as-is if it already exists.
 
 set -euo pipefail
 
-DEFAULT_TOOLS_REPO_URL="https://github.com/Assar63/zephyr-workspace-tools.git"
-DEFAULT_TOOLS_REPO_DIR="$HOME/projects/zephyr-workspace-tools"
+DEFAULT_TOOLS_REPO_URL="https://github.com/Assar63/zephyr-bootstrap.git"
+DEFAULT_TOOLS_REPO_DIR="$HOME/projects/zephyr-bootstrap"
 
 usage() {
 	cat >&2 <<EOF
