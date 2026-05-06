@@ -4,6 +4,8 @@ Reusable shell helpers for Zephyr T2 workspaces. Not specific to any single
 application — drop into any workspace where you want a consistent
 `source activate.sh` + `west flash` / `tools/serial-monitor.sh` workflow.
 
+Licensed under [Apache-2.0](LICENSE), matching the Zephyr project itself.
+
 ## What's here
 
 | File | Purpose |
