@@ -9,7 +9,7 @@
     workspace root.
 
     With -Ide, after the workspace is otherwise ready, looks for
-        <workspace>\<app>\ide-setup\<ide>-init.ps1
+        <workspace>\<app>\scripts\ide-setup\<ide>-init.ps1
     and invokes it with the workspace dir as the first arg.
 
 .PARAMETER WorkspaceDir
@@ -156,7 +156,7 @@ if (-not (Test-Path 'tools')) {
 }
 
 if ($Ide) {
-    $IdeInit = Join-Path $WorkspaceDir "$ManifestSubdir\ide-setup\$Ide-init.ps1"
+    $IdeInit = Join-Path $WorkspaceDir "$ManifestSubdir\scripts\ide-setup\$Ide-init.ps1"
     if (Test-Path $IdeInit) {
         Log "Running project IDE init: $IdeInit"
         & $IdeInit $WorkspaceDir

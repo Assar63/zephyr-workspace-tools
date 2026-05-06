@@ -13,7 +13,7 @@
 # IDE setup (--ide):
 #   When --ide=<name> is given, after the workspace is otherwise ready the
 #   bootstrap looks for an executable script at:
-#       <workspace>/<app>/ide-setup/<name>-init.sh
+#       <workspace>/<app>/scripts/ide-setup/<name>-init.sh
 #   and runs it with the workspace dir as $1. Each project decides what
 #   that script does -- this bootstrap stays IDE-agnostic.
 #
@@ -172,7 +172,7 @@ if [ ! -e activate.sh ]; then
 fi
 
 if [ -n "$IDE" ]; then
-	IDE_INIT="$WORKSPACE_DIR/$APP_DIR_NAME/ide-setup/${IDE}-init.sh"
+	IDE_INIT="$WORKSPACE_DIR/$APP_DIR_NAME/scripts/ide-setup/${IDE}-init.sh"
 	if [ -f "$IDE_INIT" ]; then
 		log "Running project IDE init: $IDE_INIT"
 		bash "$IDE_INIT" "$WORKSPACE_DIR"

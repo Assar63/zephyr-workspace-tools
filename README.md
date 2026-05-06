@@ -68,13 +68,13 @@ Bootstrapping with `--ide vscode` or `--ide clion` causes the script to
 look for an init script in the cloned project:
 
 ```
-<workspace>/<app>/ide-setup/<ide>-init.sh
+<workspace>/<app>/scripts/ide-setup/<ide>-init.sh
 ```
 
 For Windows / PowerShell users the corresponding path is:
 
 ```
-<workspace>\<app>\ide-setup\<ide>-init.ps1
+<workspace>\<app>\scripts\ide-setup\<ide>-init.ps1
 ```
 
 In either case, the init script is run with the workspace dir as the
@@ -89,14 +89,14 @@ A skeleton init script:
 
 ```sh
 #!/usr/bin/env bash
-# ide-setup/vscode-init.sh
+# scripts/ide-setup/vscode-init.sh
 set -euo pipefail
 WORKSPACE_DIR="$1"
-APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # example: drop a curated .vscode/ into the workspace root
 mkdir -p "$WORKSPACE_DIR/.vscode"
-cp -n "$APP_DIR"/ide-setup/vscode/*.json "$WORKSPACE_DIR/.vscode/"
+cp -n "$APP_DIR"/scripts/ide-setup/vscode/*.json "$WORKSPACE_DIR/.vscode/"
 ```
 
 ## Install into a Zephyr workspace
