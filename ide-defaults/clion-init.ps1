@@ -38,6 +38,30 @@ CLion default setup ready.
      loaded from .idea\runConfigurations\. They invoke
      ..\tools\{flash,gdb-server,serial-monitor}.sh which the bootstrap
      placed at the workspace root.
+"@ | Write-Host
+
+# Print attachable directories (CLion stores those in workspace.xml,
+# per-user, not committable, so we print rather than copy).
+$attach = $null
+Push-Location $WorkspaceDir
+try {
+    $attach = & west list -f '{name} {path}' 2>$null
+} catch { } finally { Pop-Location }
+
+if ($attach) {
+    Write-Host ""
+    Write-Host "  Suggested 'Attach Directory to Project' targets (right-click"
+    Write-Host "  the project root in the pane, or File -> Attach Directory):"
+    foreach ($line in $attach) {
+        $parts = $line -split '\s+', 2
+        if ($parts.Count -ne 2) { continue }
+        $name, $path = $parts
+        if ($name -eq 'manifest' -or $name -eq $AppName) { continue }
+        Write-Host "    - $WorkspaceDir\$path  ($name)"
+    }
+}
+
+@"
 
   Debug (one-time machine-local setup, not committed):
     - Settings -> Build, Execution, Deployment -> Toolchains -> + System.

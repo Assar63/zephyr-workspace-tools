@@ -25,11 +25,37 @@ $CodeWorkspace = Join-Path $WorkspaceDir "$AppName.code-workspace"
 if (Test-Path $CodeWorkspace) {
     Write-Host "  $CodeWorkspace already exists; leaving alone"
 } else {
+    $folders = [System.Collections.Generic.List[object]]::new()
+    $folders.Add([ordered]@{ name = $AppName; path = $AppName })
+    $folders.Add([ordered]@{ name = 'workspace'; path = '.' })
+    $seen = [System.Collections.Generic.HashSet[string]]::new()
+    [void]$seen.Add($AppName)
+    [void]$seen.Add('workspace')
+
+    $westOut = $null
+    Push-Location $WorkspaceDir
+    try {
+        $westOut = & west list -f '{name} {path}' 2>$null
+    } catch {
+        # west not available or workspace not initialized -- keep base folders only
+    } finally {
+        Pop-Location
+    }
+
+    if ($westOut) {
+        foreach ($line in $westOut) {
+            $parts = $line -split '\s+', 2
+            if ($parts.Count -ne 2) { continue }
+            $name, $path = $parts
+            if ($name -eq 'manifest' -or $seen.Contains($name)) { continue }
+            if (-not (Test-Path (Join-Path $WorkspaceDir $path))) { continue }
+            $folders.Add([ordered]@{ name = $name; path = $path })
+            [void]$seen.Add($name)
+        }
+    }
+
     $cw = [ordered]@{
-        folders = @(
-            [ordered]@{ name = $AppName; path = $AppName }
-            [ordered]@{ name = 'workspace'; path = '.' }
-        )
+        folders = $folders.ToArray()
         settings = [ordered]@{
             'clangd.arguments' = @(
                 "--compile-commands-dir=`${workspaceFolder:workspace}/build/$AppName"

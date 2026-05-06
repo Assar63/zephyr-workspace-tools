@@ -83,9 +83,18 @@ If the project doesn't ship its own, the bundled defaults in
 
 - **clion**: copies the standard `Flash`, `OpenOCD GDB Server`, and
   `Serial Monitor` run configs into `<app>/.idea/runConfigurations/`.
-- **vscode**: writes a multi-root `<app>.code-workspace` and a
-  `.vscode/tasks.json` (Build / Pristine Build / Flash / Serial
-  Monitor / OpenOCD GDB Server) at the workspace root.
+  Also runs `west list` and prints suggested **"Attach Directory to
+  Project"** targets — Zephyr itself plus every fetched module — so
+  the user can pull them into the project pane in one right-click each.
+  (CLion stores attached directories in `workspace.xml`, which is
+  per-user and not committable, so this stays a printed hint.)
+- **vscode**: writes a multi-root `<app>.code-workspace` whose
+  `folders` array is populated from `west list` — the app, the
+  workspace itself, Zephyr, and every fetched module each get their
+  own top-level entry in the Explorer (no digging through
+  `modules/hal/...` to find HAL sources). Plus a `.vscode/tasks.json`
+  (Build / Pristine Build / Flash / Serial Monitor / OpenOCD GDB
+  Server) at the workspace root.
 
 Either way, **existing files are never overwritten** — re-running the
 bootstrap with `--ide` is an "update missing pieces" pass.
