@@ -10,18 +10,21 @@ if [ -z "${BASH_SOURCE[0]}" ]; then
 	return 1 2>/dev/null || exit 1
 fi
 
-_RV_DISPLAY_WS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_WS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_WS_NAME="$(basename "${_WS}")"
 
 # shellcheck disable=SC1091
-. "${_RV_DISPLAY_WS}/.venv/bin/activate"
+. "${_WS}/.venv/bin/activate"
 
-export ZEPHYR_BASE="${_RV_DISPLAY_WS}/zephyr"
-export ZEPHYR_SDK_INSTALL_DIR="${HOME}/zephyr-sdk-1.0.1"
+export ZEPHYR_BASE="${_WS}/zephyr"
+# Override before sourcing if your SDK lives elsewhere.
+: "${ZEPHYR_SDK_INSTALL_DIR:=${HOME}/zephyr-sdk-1.0.1}"
+export ZEPHYR_SDK_INSTALL_DIR
 
-unset _RV_DISPLAY_WS
-
-echo "rv_display workspace ready"
+echo "${_WS_NAME} workspace ready"
 echo "  ZEPHYR_BASE=${ZEPHYR_BASE}"
 echo "  ZEPHYR_SDK_INSTALL_DIR=${ZEPHYR_SDK_INSTALL_DIR}"
 echo "  west:  $(command -v west)"
 echo "  pyocd: $(command -v pyocd)"
+
+unset _WS _WS_NAME

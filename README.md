@@ -8,15 +8,20 @@ Licensed under [Apache-2.0](LICENSE), matching the Zephyr project itself.
 
 ## What's here
 
+Each helper has a bash and a PowerShell variant; pick whichever your shell
+prefers. Both call into the same workspace state.
+
 | File | Purpose |
 |------|---------|
-| `new-workspace.sh` | Bootstrap script. Given a target directory and a Zephyr-app git URL, creates the workspace, clones the app, makes a venv, runs `west init -l` + `west update`, installs Zephyr's Python deps, and symlinks `activate.sh` + `tools/`. Safe to `curl ... | bash`. |
-| `activate.sh` | Activates the workspace's `.venv` and exports `ZEPHYR_BASE` / `ZEPHYR_SDK_INSTALL_DIR`. Source it from the workspace root. |
-| `tools/flash.sh` | `west flash` wrapper that sources `activate.sh` first. Wired into CLion run configs. |
-| `tools/gdb-server.sh` | Starts openocd as a GDB server on `:3333` for the Nucleo-H753ZI. Adjust the `-f board/...cfg` line for other boards. |
-| `tools/serial-monitor.sh` | Opens the ST-Link VCP. Prefers `tio` / `picocom`, falls back to `stty + cat`. |
+| `new-workspace.sh` / `new-workspace.ps1` | Bootstrap. Given a target directory and a Zephyr-app git URL, creates the workspace, clones the app, makes a venv, runs `west init -l` + `west update`, installs Zephyr's Python deps, and links `activate` + `tools/` from this repo. Bash version is `curl ... \| bash`-safe. |
+| `activate.sh` / `activate.ps1` | Activates the workspace's `.venv` and exports `ZEPHYR_BASE` / `ZEPHYR_SDK_INSTALL_DIR`. Source from the workspace root. |
+| `tools/flash.sh` / `tools/flash.ps1` | `west flash` wrapper. Wired into CLion run configs and VSCode tasks. |
+| `tools/gdb-server.sh` / `tools/gdb-server.ps1` | Starts openocd as a GDB server on `:3333`. Adjust the `-f board/...cfg` line for other boards. |
+| `tools/serial-monitor.sh` / `tools/serial-monitor.ps1` | Opens the board's serial console. Bash: prefers `tio`/`picocom`, falls back to `stty + cat`. PS: uses `[System.IO.Ports.SerialPort]`; override port with `$env:PORT`. |
 
 ## Bootstrap a new workspace
+
+### Linux / macOS (bash)
 
 ```sh
 # Local clone of this repo:
@@ -29,6 +34,25 @@ Licensed under [Apache-2.0](LICENSE), matching the Zephyr project itself.
 curl -sL https://raw.githubusercontent.com/Assar63/zephyr-workspace-tools/main/new-workspace.sh \
     | bash -s -- --ide vscode ~/projects/foo-workspace https://github.com/me/foo.git
 ```
+
+### Windows (PowerShell)
+
+```powershell
+# Local clone of this repo:
+.\new-workspace.ps1 C:\dev\foo-workspace https://github.com/me/foo.git
+
+# With IDE setup hook:
+.\new-workspace.ps1 C:\dev\foo-workspace https://github.com/me/foo.git -Ide vscode
+
+# Or one-shot from the published repo:
+iwr https://raw.githubusercontent.com/Assar63/zephyr-workspace-tools/main/new-workspace.ps1 -OutFile new-workspace.ps1
+.\new-workspace.ps1 C:\dev\foo-workspace https://github.com/me/foo.git -Ide vscode
+```
+
+The PowerShell port copies `activate.ps1` + `tools\` into the workspace
+instead of symlinking, so it works on stock Windows without Developer
+Mode. Re-run `new-workspace.ps1` to refresh after the tools repo is
+updated.
 
 `<app-repo-url>` must point at a Zephyr application that contains a
 `west.yml` manifest at its root (T2 manifest-in-app topology).
@@ -47,10 +71,16 @@ look for an init script in the cloned project:
 <workspace>/<app>/ide-setup/<ide>-init.sh
 ```
 
-If that file exists, it's run with the workspace dir as `$1`. It can do
-whatever the project needs — drop `.vscode/` into the workspace root,
-materialize a `.code-workspace`, generate CLion `.idea/runConfigurations/`
-entries, copy launch configs, etc.
+For Windows / PowerShell users the corresponding path is:
+
+```
+<workspace>\<app>\ide-setup\<ide>-init.ps1
+```
+
+In either case, the init script is run with the workspace dir as the
+first argument. It can do whatever the project needs — drop `.vscode/`
+into the workspace root, materialize a `.code-workspace`, generate CLion
+`.idea/runConfigurations/` entries, copy launch configs, etc.
 
 This bootstrap is intentionally IDE-agnostic — no layout conventions are
 hard-coded here. Projects opt in by adding their own `ide-setup/` scripts.
