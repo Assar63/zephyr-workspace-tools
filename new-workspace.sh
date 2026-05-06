@@ -45,12 +45,36 @@ TOOLS_REPO_DIR="${TOOLS_REPO_DIR:-$DEFAULT_TOOLS_REPO_DIR}"
 log() { printf '==> %s\n' "$*"; }
 
 # Host deps
-for cmd in python3 git; do
-	command -v "$cmd" >/dev/null 2>&1 \
-		|| { echo "Missing required tool: $cmd" >&2; exit 1; }
-done
-python3 -c 'import venv' 2>/dev/null \
-	|| { echo "python3 venv module not available; install python3-venv" >&2; exit 1; }
+command -v git >/dev/null 2>&1 \
+	|| { echo "Missing required tool: git" >&2; exit 1; }
+
+# Prefer uv (much faster venv + installs) and fall back to python3+pip if not present.
+if command -v uv >/dev/null 2>&1; then
+	USE_UV=1
+	log "Using uv for venv and package installs"
+else
+	USE_UV=0
+	command -v python3 >/dev/null 2>&1 \
+		|| { echo "Missing required tool: python3 (or install uv)" >&2; exit 1; }
+	python3 -c 'import venv' 2>/dev/null \
+		|| { echo "python3 venv module not available; install python3-venv (or install uv)" >&2; exit 1; }
+fi
+
+create_venv() {
+	if [ "$USE_UV" = "1" ]; then
+		uv venv "$1"
+	else
+		python3 -m venv "$1"
+	fi
+}
+
+pip_install() {
+	if [ "$USE_UV" = "1" ]; then
+		uv pip install --quiet "$@"
+	else
+		pip install --quiet "$@"
+	fi
+}
 
 log "Creating workspace at $WORKSPACE_DIR"
 mkdir -p "$WORKSPACE_DIR"
@@ -65,12 +89,13 @@ fi
 
 if [ ! -d .venv ]; then
 	log "Creating Python venv (.venv)"
-	python3 -m venv .venv
+	create_venv .venv
 fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
-pip install --quiet --upgrade pip
-pip install --quiet west
+# pip self-upgrade is only meaningful on the pip path; uv doesn't use pip's machinery.
+[ "$USE_UV" = "0" ] && pip_install --upgrade pip
+pip_install west
 
 if [ -d .west ]; then
 	log "west already initialized; skipping init"
@@ -83,7 +108,7 @@ log "west update (may take several minutes)"
 west update
 
 log "Installing Zephyr Python deps"
-pip install --quiet -r zephyr/scripts/requirements.txt
+pip_install -r zephyr/scripts/requirements.txt
 
 if [ ! -d "$TOOLS_REPO_DIR" ]; then
 	log "Cloning workspace tools repo to $TOOLS_REPO_DIR"

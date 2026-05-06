@@ -30,6 +30,11 @@ curl -sL https://raw.githubusercontent.com/Assar63/zephyr-workspace-tools/main/n
 `<app-repo-url>` must point at a Zephyr application that contains a
 `west.yml` manifest at its root (T2 manifest-in-app topology).
 
+The script uses [`uv`](https://docs.astral.sh/uv/) for the venv and
+package installs if it's on `PATH` (Zephyr's `requirements.txt` pulls
+~80 packages, ~10× faster), and silently falls back to
+`python3 -m venv` + `pip` otherwise.
+
 ## Install into a Zephyr workspace
 
 From inside an existing workspace root (the dir containing `.west/`,
