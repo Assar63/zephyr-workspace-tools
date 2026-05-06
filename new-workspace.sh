@@ -244,6 +244,8 @@ if [ -n "$IDE" ]; then
 	APP_FULL="$WORKSPACE_DIR/$APP_DIR_NAME"
 	PROJECT_INIT="$APP_FULL/scripts/ide-setup/${IDE}-init.sh"
 	DEFAULT_INIT="$TOOLS_REPO_DIR/ide-defaults/${IDE}-init.sh"
+	# Export so project init scripts can delegate to / locate the defaults.
+	export ZEPHYR_BOOTSTRAP_DIR="$TOOLS_REPO_DIR"
 	if [ -f "$PROJECT_INIT" ]; then
 		log "Running project IDE init: $PROJECT_INIT"
 		bash "$PROJECT_INIT" "$WORKSPACE_DIR" "$APP_FULL"

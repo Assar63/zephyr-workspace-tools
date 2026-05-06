@@ -234,6 +234,8 @@ if ($Ide) {
     $AppFull = Join-Path $WorkspaceDir $ManifestSubdir
     $ProjectInit = Join-Path $AppFull "scripts\ide-setup\$Ide-init.ps1"
     $DefaultInit = Join-Path $ToolsRepoDir "ide-defaults\$Ide-init.ps1"
+    # Export so project init scripts can delegate to / locate the defaults.
+    $env:ZEPHYR_BOOTSTRAP_DIR = $ToolsRepoDir
     if (Test-Path $ProjectInit) {
         Log "Running project IDE init: $ProjectInit"
         & $ProjectInit $WorkspaceDir $AppFull
