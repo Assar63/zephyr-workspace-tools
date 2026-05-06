@@ -13,42 +13,33 @@ the workspace it builds, and the host-installed Zephyr SDK — relate:
 
 ```mermaid
 flowchart TB
-    subgraph tools["zephyr-workspace-tools (this repo)"]
-        direction TB
-        nw[new-workspace]
-        seed[seed-ide-templates]
-        act[activate]
-        bin["tools/ (flash, gdb-server, monitor)"]
-        def["ide-defaults/"]
-    end
+    tools["<b>zephyr-workspace-tools</b><br/>(this repo, one per machine)"]
+    ws["<b>workspace dir</b><br/>(created per-project by bootstrap)"]
+    sdk["<b>Zephyr SDK</b><br/>(installed separately)"]
 
-    subgraph ws["workspace dir (created by bootstrap)"]
-        direction TB
-        venv[".venv/"]
-        wcfg[".west/"]
-        link_act["activate ⇢ link/copy"]
-        link_bin["tools/ ⇢ link/copy"]
-        zeph["zephyr/ (west update)"]
-        mods["modules/ (west update)"]
-        subgraph app["app/ (your Zephyr app)"]
-            direction TB
-            files["west.yml · CMakeLists.txt · prj.conf · src/"]
-            idesetup["scripts/ide-setup/ (optional)"]
-        end
-    end
-
-    subgraph sdk["Zephyr SDK (installed separately)"]
-        direction TB
-        tc["arm-zephyr-eabi/"]
-    end
-
-    tools --> ws
-    nw --> sdk
-    act --> link_act
-    bin --> link_bin
-    def --> app
-    seed --> idesetup
+    tools -->|bootstrap creates| ws
+    tools -.->|activate · tools/ symlinked into| ws
+    sdk -.->|build uses| ws
 ```
+
+The **tools repo** holds `new-workspace.{sh,ps1}`, `seed-ide-templates.{sh,ps1}`, `activate.{sh,ps1}`, `tools/{flash,gdb-server,serial-monitor}.{sh,ps1}`, and `ide-defaults/`.
+
+Each **workspace dir** the bootstrap creates contains:
+
+```
+<workspace>/
+├── .venv/                 Python venv with west
+├── .west/config           workspace-local west settings
+├── activate.{sh,ps1}      ⇢ link or copy back to tools repo
+├── tools/                 ⇢ link or copy back to tools repo
+├── zephyr/                fetched by `west update`
+├── modules/...            fetched by `west update`
+└── <app>/                 cloned Zephyr application
+    ├── west.yml · CMakeLists.txt · prj.conf · src/
+    └── scripts/ide-setup/ (optional; overrides ide-defaults)
+```
+
+The **Zephyr SDK** is host-installed once (e.g. `~/zephyr-sdk-1.0.1/`) and shared across all workspaces — the bootstrap doesn't manage it.
 
 The tools repo lives once per machine; each new project gets its own
 workspace dir that links back to it. The Zephyr SDK is shared across
