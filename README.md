@@ -6,6 +6,54 @@ application — drop into any workspace where you want a consistent
 
 Licensed under [Apache-2.0](LICENSE), matching the Zephyr project itself.
 
+## Workspace topology
+
+What the bootstrap creates and how the three pieces — this tools repo,
+the workspace it builds, and the host-installed Zephyr SDK — relate:
+
+```mermaid
+graph TB
+    subgraph sdk["~/zephyr-sdk-1.0.1/  (Zephyr SDK, installed separately)"]
+        arm["arm-zephyr-eabi/"]
+        sdk_other["…other toolchains"]
+    end
+
+    subgraph tools_repo["~/projects/zephyr-workspace-tools/  (this repo)"]
+        nw["new-workspace.{sh,ps1}"]
+        seed["seed-ide-templates.{sh,ps1}"]
+        act["activate.{sh,ps1}"]
+        t_bin["tools/{flash,gdb-server,serial-monitor}.{sh,ps1}"]
+        id_def["ide-defaults/{clion,vscode}-init.{sh,ps1}<br/>+ runConfigurations XMLs"]
+    end
+
+    subgraph ws["~/projects/&lt;workspace&gt;/  (Zephyr T2 workspace, created by bootstrap)"]
+        ws_venv[".venv/  (Python venv with west)"]
+        ws_west[".west/config"]
+        ws_act["activate.{sh,ps1}  ⇒  link/copy"]
+        ws_tools["tools/  ⇒  link/copy"]
+        ws_zephyr["zephyr/  (fetched by west update)"]
+        ws_modules["modules/…  (fetched by west update)"]
+        subgraph app["&lt;app&gt;/  (your cloned Zephyr application)"]
+            a_west["west.yml"]
+            a_cmake["CMakeLists.txt"]
+            a_prj["prj.conf"]
+            a_src["src/"]
+            a_idesetup["scripts/ide-setup/<br/>(optional; overrides defaults)"]
+        end
+    end
+
+    nw -.->|bootstraps| ws
+    nw -.->|builds against| sdk
+    act -.->|symlinked / copied as| ws_act
+    t_bin -.->|symlinked / copied as| ws_tools
+    id_def -.->|fallback IDE init| app
+    seed -.->|copies templates into| a_idesetup
+```
+
+The tools repo lives once per machine; each new project gets its own
+workspace dir that links back to it. The Zephyr SDK is shared across
+all workspaces.
+
 ## What's here
 
 Each helper has a bash and a PowerShell variant; pick whichever your shell
