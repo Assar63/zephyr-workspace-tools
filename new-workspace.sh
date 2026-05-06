@@ -2,13 +2,13 @@
 # new-workspace.sh -- bootstrap a Zephyr T2 workspace from an app git repo.
 #
 # Usage:
-#   new-workspace.sh [--ide vscode|clion] <workspace-dir> <app-repo-url> [<manifest-subdir>]
+#   new-workspace.sh [--ide vscode|clion] [--toolchain LIST]
+#                    <workspace-dir> <app-repo-url> [<manifest-subdir>]
 #
 # Examples:
 #   ./new-workspace.sh ~/projects/foo-workspace https://github.com/me/foo.git
-#   ./new-workspace.sh --ide clion ~/projects/foo-workspace https://github.com/me/foo.git
-#   curl -sL https://raw.githubusercontent.com/Assar63/zephyr-bootstrap/main/new-workspace.sh \
-#       | bash -s -- --ide vscode ~/projects/foo-workspace https://github.com/me/foo.git
+#   ./new-workspace.sh --ide clion --toolchain arm \
+#       ~/projects/foo-workspace https://github.com/me/foo.git
 #
 # IDE setup (--ide):
 #   When --ide=<name> is given, after the workspace is otherwise ready the
@@ -16,8 +16,13 @@
 #       1. <workspace>/<app>/scripts/ide-setup/<name>-init.sh   (project-shipped)
 #       2. <tools-repo>/ide-defaults/<name>-init.sh             (fallback)
 #   and runs it with two args: the workspace dir and the cloned app dir.
-#   Each script is responsible for skipping any files it would otherwise
-#   overwrite.
+#
+# Toolchain install (--toolchain):
+#   Off by default. Comma-separated short names: arm, arm64, riscv, or
+#   the literal "all" (full SDK, ~3 GB). The matching tarballs are
+#   downloaded from sdk-ng releases for the SDK version that the cloned
+#   zephyr/SDK_VERSION pins, extracted under $HOME/zephyr-sdk-<version>/,
+#   and registered via setup.sh. Skipped if that dir already exists.
 #
 # Optional env vars:
 #   TOOLS_REPO_URL  git URL of zephyr-bootstrap.
@@ -32,11 +37,16 @@ DEFAULT_TOOLS_REPO_DIR="$HOME/projects/zephyr-bootstrap"
 
 usage() {
 	cat >&2 <<EOF
-Usage: $(basename "$0") [--ide vscode|clion] <workspace-dir> <app-repo-url> [<manifest-subdir>]
+Usage: $(basename "$0") [--ide vscode|clion] [--toolchain LIST]
+                       <workspace-dir> <app-repo-url> [<manifest-subdir>]
 
-  --ide <name>        Optional. After bootstrap, run the project's
-                      ide-setup/<name>-init.sh (if it exists) with the
-                      workspace dir as \$1. Accepted values: vscode, clion.
+  --ide <name>        Optional. After bootstrap, run the project's (or
+                      bundled-default) ide-setup/<name>-init.sh.
+                      Accepted: vscode, clion.
+  --toolchain LIST    Optional. Off by default. Comma-separated short
+                      names (arm, arm64, riscv) or "all" (full SDK).
+                      Installs the matching Zephyr SDK to
+                      \$HOME/zephyr-sdk-<version>/.
   <workspace-dir>     Directory to create for the new workspace.
   <app-repo-url>      Git URL of the Zephyr app (must contain west.yml).
   <manifest-subdir>   Optional. Directory name under the workspace where the
@@ -47,34 +57,18 @@ EOF
 }
 
 IDE=""
+TOOLCHAIN=""
 POSITIONAL=()
 while [ $# -gt 0 ]; do
 	case "$1" in
-		--ide)
-			[ $# -ge 2 ] || usage
-			IDE="$2"
-			shift 2
-			;;
-		--ide=*)
-			IDE="${1#--ide=}"
-			shift
-			;;
-		-h|--help)
-			usage
-			;;
-		--)
-			shift
-			POSITIONAL+=("$@")
-			break
-			;;
-		-*)
-			echo "Unknown option: $1" >&2
-			usage
-			;;
-		*)
-			POSITIONAL+=("$1")
-			shift
-			;;
+		--ide)        [ $# -ge 2 ] || usage; IDE="$2"; shift 2 ;;
+		--ide=*)      IDE="${1#--ide=}"; shift ;;
+		--toolchain)  [ $# -ge 2 ] || usage; TOOLCHAIN="$2"; shift 2 ;;
+		--toolchain=*) TOOLCHAIN="${1#--toolchain=}"; shift ;;
+		-h|--help)    usage ;;
+		--)           shift; POSITIONAL+=("$@"); break ;;
+		-*)           echo "Unknown option: $1" >&2; usage ;;
+		*)            POSITIONAL+=("$1"); shift ;;
 	esac
 done
 set -- "${POSITIONAL[@]}"
@@ -83,6 +77,17 @@ case "$IDE" in
 	""|vscode|clion) ;;
 	*) echo "Unknown --ide value: '$IDE' (expected vscode or clion)" >&2; exit 1 ;;
 esac
+
+# Validate toolchain list early so we don't get to a bad name after a 5-min west update.
+if [ -n "$TOOLCHAIN" ] && [ "$TOOLCHAIN" != "all" ]; then
+	IFS=',' read -ra _TC_VALIDATE <<<"$TOOLCHAIN"
+	for tc in "${_TC_VALIDATE[@]}"; do
+		case "$tc" in
+			arm|arm64|riscv) ;;
+			*) echo "Unknown --toolchain entry: '$tc' (expected arm, arm64, riscv, or all)" >&2; exit 1 ;;
+		esac
+	done
+fi
 
 [ "$#" -ge 2 ] || usage
 
@@ -127,6 +132,64 @@ pip_install() {
 	fi
 }
 
+install_zephyr_sdk() {
+	# Args: $1 = comma-separated short names ("arm", "arm,riscv", or "all")
+	local req="$1"
+	local sdk_version sdk_dir os arch osarch base_url
+	local tc_full setup_args=(-h -c)
+
+	sdk_version="$(cat zephyr/SDK_VERSION 2>/dev/null || true)"
+	[ -n "$sdk_version" ] || { echo "could not read zephyr/SDK_VERSION" >&2; return 1; }
+	sdk_dir="$HOME/zephyr-sdk-$sdk_version"
+
+	if [ -d "$sdk_dir" ]; then
+		log "Zephyr SDK $sdk_version already at $sdk_dir; skipping install"
+		return 0
+	fi
+
+	case "$(uname -s)" in
+		Linux)  os="linux" ;;
+		Darwin) os="macos" ;;
+		*) echo "--toolchain: unsupported OS $(uname -s) (use the .ps1 bootstrap on Windows)" >&2; return 1 ;;
+	esac
+	case "$(uname -m)" in
+		x86_64|amd64)   arch="x86_64" ;;
+		aarch64|arm64)  arch="aarch64" ;;
+		*) echo "--toolchain: unsupported arch $(uname -m)" >&2; return 1 ;;
+	esac
+	osarch="${os}-${arch}"
+	base_url="https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${sdk_version}"
+
+	log "Installing Zephyr SDK $sdk_version into $sdk_dir"
+
+	if [ "$req" = "all" ]; then
+		log "  downloading full SDK (large)"
+		curl -fsSL "$base_url/zephyr-sdk-${sdk_version}_${osarch}.tar.xz" -o /tmp/zsdk.tar.xz
+		tar -xf /tmp/zsdk.tar.xz -C "$HOME"
+		rm /tmp/zsdk.tar.xz
+		( cd "$sdk_dir" && bash setup.sh -h -c -t all )
+	else
+		log "  downloading minimal SDK"
+		curl -fsSL "$base_url/zephyr-sdk-${sdk_version}_${osarch}_minimal.tar.xz" -o /tmp/zsdk-min.tar.xz
+		tar -xf /tmp/zsdk-min.tar.xz -C "$HOME"
+		rm /tmp/zsdk-min.tar.xz
+		IFS=',' read -ra _tc_array <<<"$req"
+		for tc in "${_tc_array[@]}"; do
+			case "$tc" in
+				arm)   tc_full="arm-zephyr-eabi" ;;
+				arm64) tc_full="aarch64-zephyr-elf" ;;
+				riscv) tc_full="riscv64-zephyr-elf" ;;
+			esac
+			log "  downloading toolchain: $tc_full"
+			curl -fsSL "$base_url/toolchain_gnu_${osarch}_${tc_full}.tar.xz" -o /tmp/zsdk-tc.tar.xz
+			tar -xf /tmp/zsdk-tc.tar.xz -C "$sdk_dir"
+			rm /tmp/zsdk-tc.tar.xz
+			setup_args+=(-t "$tc_full")
+		done
+		( cd "$sdk_dir" && bash setup.sh "${setup_args[@]}" )
+	fi
+}
+
 log "Creating workspace at $WORKSPACE_DIR"
 mkdir -p "$WORKSPACE_DIR"
 cd "$WORKSPACE_DIR"
@@ -160,6 +223,10 @@ west update
 
 log "Installing Zephyr Python deps"
 pip_install -r zephyr/scripts/requirements.txt
+
+if [ -n "$TOOLCHAIN" ]; then
+	install_zephyr_sdk "$TOOLCHAIN"
+fi
 
 if [ ! -d "$TOOLS_REPO_DIR" ]; then
 	log "Cloning workspace tools repo to $TOOLS_REPO_DIR"

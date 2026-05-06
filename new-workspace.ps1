@@ -49,7 +49,10 @@ param(
     [Parameter(Mandatory = $true, Position = 0)][string]$WorkspaceDir,
     [Parameter(Mandatory = $true, Position = 1)][string]$AppRepoUrl,
     [Parameter(Position = 2)][string]$ManifestSubdir = '',
-    [ValidateSet('', 'vscode', 'clion')][string]$Ide = ''
+    [ValidateSet('', 'vscode', 'clion')][string]$Ide = '',
+    # Comma-separated short names: arm, arm64, riscv, or "all" (full SDK).
+    # Off by default. Validation happens in Install-ZephyrSdk.
+    [string]$Toolchain = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -80,6 +83,71 @@ function Invoke-Native {
 # Host deps
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     throw 'Missing required tool: git'
+}
+
+# Validate -Toolchain early so we don't get to a bad name after a 5-min west update.
+if ($Toolchain -and $Toolchain -ne 'all') {
+    foreach ($tc in $Toolchain.Split(',')) {
+        if ($tc -notin @('arm', 'arm64', 'riscv')) {
+            throw "Unknown -Toolchain entry: '$tc' (expected arm, arm64, riscv, or all)"
+        }
+    }
+}
+
+function Install-ZephyrSdk {
+    param([string]$Req)
+
+    $sdkVersionFile = Join-Path $WorkspaceDir 'zephyr\SDK_VERSION'
+    if (-not (Test-Path $sdkVersionFile)) {
+        throw "could not read $sdkVersionFile"
+    }
+    $sdkVersion = (Get-Content $sdkVersionFile).Trim()
+    $sdkDir = Join-Path $env:USERPROFILE "zephyr-sdk-$sdkVersion"
+
+    if (Test-Path $sdkDir) {
+        Log "Zephyr SDK $sdkVersion already at $sdkDir; skipping install"
+        return
+    }
+
+    if (-not (Get-Command 7z -ErrorAction SilentlyContinue)) {
+        throw "-Toolchain on Windows requires 7-Zip on PATH (e.g. ``scoop install 7zip`` or download from 7-zip.org)"
+    }
+
+    $osarch = 'windows-x86_64'
+    $baseUrl = "https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v$sdkVersion"
+    $tmp = Join-Path ([System.IO.Path]::GetTempPath()) 'zsdk-download.7z'
+
+    Log "Installing Zephyr SDK $sdkVersion into $sdkDir"
+
+    if ($Req -eq 'all') {
+        Log '  downloading full SDK (large)'
+        Invoke-WebRequest "$baseUrl/zephyr-sdk-${sdkVersion}_${osarch}.7z" -OutFile $tmp
+        & 7z x -y -o"$env:USERPROFILE" $tmp | Out-Null
+        Remove-Item $tmp
+        Push-Location $sdkDir
+        try { & cmd /c 'setup.cmd /h /c /t all' } finally { Pop-Location }
+    } else {
+        Log '  downloading minimal SDK'
+        Invoke-WebRequest "$baseUrl/zephyr-sdk-${sdkVersion}_${osarch}_minimal.7z" -OutFile $tmp
+        & 7z x -y -o"$env:USERPROFILE" $tmp | Out-Null
+        Remove-Item $tmp
+
+        $setupArgs = @('/h', '/c')
+        foreach ($tc in $Req.Split(',')) {
+            $tcFull = switch ($tc) {
+                'arm'   { 'arm-zephyr-eabi' }
+                'arm64' { 'aarch64-zephyr-elf' }
+                'riscv' { 'riscv64-zephyr-elf' }
+            }
+            Log "  downloading toolchain: $tcFull"
+            Invoke-WebRequest "$baseUrl/toolchain_gnu_${osarch}_${tcFull}.7z" -OutFile $tmp
+            & 7z x -y -o"$sdkDir" $tmp | Out-Null
+            Remove-Item $tmp
+            $setupArgs += @('/t', $tcFull)
+        }
+        Push-Location $sdkDir
+        try { & cmd /c "setup.cmd $($setupArgs -join ' ')" } finally { Pop-Location }
+    }
 }
 
 $script:UseUv = [bool](Get-Command uv -ErrorAction SilentlyContinue)
@@ -142,6 +210,10 @@ Invoke-Native west update
 
 Log 'Installing Zephyr Python deps'
 Install-Pkg -r zephyr/scripts/requirements.txt
+
+if ($Toolchain) {
+    Install-ZephyrSdk -Req $Toolchain
+}
 
 if (-not (Test-Path $ToolsRepoDir)) {
     Log "Cloning workspace tools repo to $ToolsRepoDir"

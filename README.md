@@ -68,12 +68,14 @@ prefers. Both call into the same workspace state.
 # Local clone of this repo:
 ./new-workspace.sh ~/projects/foo-workspace https://github.com/me/foo.git
 
-# With IDE setup hook:
-./new-workspace.sh --ide clion ~/projects/foo-workspace https://github.com/me/foo.git
+# With IDE setup hook + ARM toolchain install:
+./new-workspace.sh --ide clion --toolchain arm \
+    ~/projects/foo-workspace https://github.com/me/foo.git
 
 # Or one-shot from the published repo:
 curl -sL https://raw.githubusercontent.com/Assar63/zephyr-bootstrap/main/new-workspace.sh \
-    | bash -s -- --ide vscode ~/projects/foo-workspace https://github.com/me/foo.git
+    | bash -s -- --ide vscode --toolchain arm \
+        ~/projects/foo-workspace https://github.com/me/foo.git
 ```
 
 ### Windows (PowerShell)
@@ -82,8 +84,8 @@ curl -sL https://raw.githubusercontent.com/Assar63/zephyr-bootstrap/main/new-wor
 # Local clone of this repo:
 .\new-workspace.ps1 C:\dev\foo-workspace https://github.com/me/foo.git
 
-# With IDE setup hook:
-.\new-workspace.ps1 C:\dev\foo-workspace https://github.com/me/foo.git -Ide vscode
+# With IDE setup hook + ARM toolchain install (needs 7-Zip on PATH):
+.\new-workspace.ps1 C:\dev\foo-workspace https://github.com/me/foo.git -Ide vscode -Toolchain arm
 
 # Or one-shot from the published repo:
 iwr https://raw.githubusercontent.com/Assar63/zephyr-bootstrap/main/new-workspace.ps1 -OutFile new-workspace.ps1
@@ -102,6 +104,17 @@ The script uses [`uv`](https://docs.astral.sh/uv/) for the venv and
 package installs if it's on `PATH` (Zephyr's `requirements.txt` pulls
 ~80 packages, ~10× faster), and silently falls back to
 `python3 -m venv` + `pip` otherwise.
+
+### Optional Zephyr SDK install (`--toolchain` / `-Toolchain`)
+
+Off by default. Comma-separated short names — `arm`, `arm64`, `riscv` — or
+the literal `all` (full SDK, ~3 GB). After `west update` the bootstrap reads
+the SDK version that the cloned `zephyr/SDK_VERSION` pins, downloads the
+matching tarballs from the [sdk-ng releases](https://github.com/zephyrproject-rtos/sdk-ng/releases),
+extracts to `~/zephyr-sdk-<version>/`, and runs `setup.sh` (or `setup.cmd`
+on Windows) to register the CMake package. Skipped if that directory
+already exists. Bash supports Linux + macOS; PowerShell targets Windows
+and needs `7z.exe` on `PATH` (e.g. `scoop install 7zip`).
 
 ## Project-supplied IDE setup (`--ide`)
 
