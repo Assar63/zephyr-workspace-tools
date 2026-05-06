@@ -12,10 +12,12 @@
 #
 # IDE setup (--ide):
 #   When --ide=<name> is given, after the workspace is otherwise ready the
-#   bootstrap looks for an executable script at:
-#       <workspace>/<app>/scripts/ide-setup/<name>-init.sh
-#   and runs it with the workspace dir as $1. Each project decides what
-#   that script does -- this bootstrap stays IDE-agnostic.
+#   bootstrap looks for an init script in this order:
+#       1. <workspace>/<app>/scripts/ide-setup/<name>-init.sh   (project-shipped)
+#       2. <tools-repo>/ide-defaults/<name>-init.sh             (fallback)
+#   and runs it with two args: the workspace dir and the cloned app dir.
+#   Each script is responsible for skipping any files it would otherwise
+#   overwrite.
 #
 # Optional env vars:
 #   TOOLS_REPO_URL  git URL of zephyr-workspace-tools.
@@ -172,12 +174,17 @@ if [ ! -e activate.sh ]; then
 fi
 
 if [ -n "$IDE" ]; then
-	IDE_INIT="$WORKSPACE_DIR/$APP_DIR_NAME/scripts/ide-setup/${IDE}-init.sh"
-	if [ -f "$IDE_INIT" ]; then
-		log "Running project IDE init: $IDE_INIT"
-		bash "$IDE_INIT" "$WORKSPACE_DIR"
+	APP_FULL="$WORKSPACE_DIR/$APP_DIR_NAME"
+	PROJECT_INIT="$APP_FULL/scripts/ide-setup/${IDE}-init.sh"
+	DEFAULT_INIT="$TOOLS_REPO_DIR/ide-defaults/${IDE}-init.sh"
+	if [ -f "$PROJECT_INIT" ]; then
+		log "Running project IDE init: $PROJECT_INIT"
+		bash "$PROJECT_INIT" "$WORKSPACE_DIR" "$APP_FULL"
+	elif [ -f "$DEFAULT_INIT" ]; then
+		log "No project IDE init found; using default: $DEFAULT_INIT"
+		bash "$DEFAULT_INIT" "$WORKSPACE_DIR" "$APP_FULL"
 	else
-		echo "Warning: --ide=$IDE requested but $IDE_INIT not found in project; skipping" >&2
+		echo "Warning: --ide=$IDE requested but no init script found (project nor default); skipping" >&2
 	fi
 fi
 

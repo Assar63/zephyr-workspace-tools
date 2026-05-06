@@ -18,6 +18,7 @@ prefers. Both call into the same workspace state.
 | `tools/flash.sh` / `tools/flash.ps1` | `west flash` wrapper. Wired into CLion run configs and VSCode tasks. |
 | `tools/gdb-server.sh` / `tools/gdb-server.ps1` | Starts openocd as a GDB server on `:3333`. Adjust the `-f board/...cfg` line for other boards. |
 | `tools/serial-monitor.sh` / `tools/serial-monitor.ps1` | Opens the board's serial console. Bash: prefers `tio`/`picocom`, falls back to `stty + cat`. PS: uses `[System.IO.Ports.SerialPort]`; override port with `$env:PORT`. |
+| `ide-defaults/{clion,vscode}-init.{sh,ps1}` | Fallback IDE setup used when the project doesn't ship its own. Generates `.idea/runConfigurations/` (CLion) or `.code-workspace` + `.vscode/tasks.json` (VSCode), skipping anything that already exists. |
 
 ## Bootstrap a new workspace
 
@@ -65,34 +66,41 @@ package installs if it's on `PATH` (Zephyr's `requirements.txt` pulls
 ## Project-supplied IDE setup (`--ide`)
 
 Bootstrapping with `--ide vscode` or `--ide clion` causes the script to
-look for an init script in the cloned project:
+look for an init script in this order:
 
-```
-<workspace>/<app>/scripts/ide-setup/<ide>-init.sh
-```
+1. `<workspace>/<app>/scripts/ide-setup/<ide>-init.{sh,ps1}` — project-shipped
+2. `<tools-repo>/ide-defaults/<ide>-init.{sh,ps1}` — fallback bundled with this repo
 
-For Windows / PowerShell users the corresponding path is:
+The chosen script is run with **two arguments**: the workspace dir and
+the cloned app dir.
 
-```
-<workspace>\<app>\scripts\ide-setup\<ide>-init.ps1
-```
+Project-shipped scripts can do anything the project needs — drop
+`.vscode/` into the workspace root, materialize a `.code-workspace`,
+generate CLion `.idea/runConfigurations/` entries, etc.
 
-In either case, the init script is run with the workspace dir as the
-first argument. It can do whatever the project needs — drop `.vscode/`
-into the workspace root, materialize a `.code-workspace`, generate CLion
-`.idea/runConfigurations/` entries, copy launch configs, etc.
+If the project doesn't ship its own, the bundled defaults in
+`ide-defaults/` produce a sensible baseline:
+
+- **clion**: copies the standard `Flash`, `OpenOCD GDB Server`, and
+  `Serial Monitor` run configs into `<app>/.idea/runConfigurations/`.
+- **vscode**: writes a multi-root `<app>.code-workspace` and a
+  `.vscode/tasks.json` (Build / Pristine Build / Flash / Serial
+  Monitor / OpenOCD GDB Server) at the workspace root.
+
+Either way, **existing files are never overwritten** — re-running the
+bootstrap with `--ide` is an "update missing pieces" pass.
 
 This bootstrap is intentionally IDE-agnostic — no layout conventions are
 hard-coded here. Projects opt in by adding their own `ide-setup/` scripts.
 
-A skeleton init script:
+A skeleton project init script:
 
 ```sh
 #!/usr/bin/env bash
 # scripts/ide-setup/vscode-init.sh
 set -euo pipefail
 WORKSPACE_DIR="$1"
-APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+APP_DIR="$2"
 
 # example: drop a curated .vscode/ into the workspace root
 mkdir -p "$WORKSPACE_DIR/.vscode"

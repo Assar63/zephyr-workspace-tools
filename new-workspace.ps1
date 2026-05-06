@@ -8,9 +8,12 @@
     and copies activate.ps1 + tools\ from the tools repo into the
     workspace root.
 
-    With -Ide, after the workspace is otherwise ready, looks for
-        <workspace>\<app>\scripts\ide-setup\<ide>-init.ps1
-    and invokes it with the workspace dir as the first arg.
+    With -Ide, after the workspace is otherwise ready, looks for an
+    init script in this order:
+        1. <workspace>\<app>\scripts\ide-setup\<ide>-init.ps1  (project)
+        2. <tools-repo>\ide-defaults\<ide>-init.ps1           (fallback)
+    and invokes it with two args: the workspace dir and the cloned app
+    dir.
 
 .PARAMETER WorkspaceDir
     Directory to create for the new workspace.
@@ -156,12 +159,17 @@ if (-not (Test-Path 'tools')) {
 }
 
 if ($Ide) {
-    $IdeInit = Join-Path $WorkspaceDir "$ManifestSubdir\scripts\ide-setup\$Ide-init.ps1"
-    if (Test-Path $IdeInit) {
-        Log "Running project IDE init: $IdeInit"
-        & $IdeInit $WorkspaceDir
+    $AppFull = Join-Path $WorkspaceDir $ManifestSubdir
+    $ProjectInit = Join-Path $AppFull "scripts\ide-setup\$Ide-init.ps1"
+    $DefaultInit = Join-Path $ToolsRepoDir "ide-defaults\$Ide-init.ps1"
+    if (Test-Path $ProjectInit) {
+        Log "Running project IDE init: $ProjectInit"
+        & $ProjectInit $WorkspaceDir $AppFull
+    } elseif (Test-Path $DefaultInit) {
+        Log "No project IDE init found; using default: $DefaultInit"
+        & $DefaultInit $WorkspaceDir $AppFull
     } else {
-        Write-Warning "-Ide $Ide requested but $IdeInit not found in project; skipping"
+        Write-Warning "-Ide $Ide requested but no init script found (project nor default); skipping"
     }
 }
 
