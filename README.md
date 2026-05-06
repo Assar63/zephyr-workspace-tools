@@ -22,9 +22,12 @@ Licensed under [Apache-2.0](LICENSE), matching the Zephyr project itself.
 # Local clone of this repo:
 ./new-workspace.sh ~/projects/foo-workspace https://github.com/me/foo.git
 
-# Or one-shot from the published repo (after you've pushed it):
+# With IDE setup hook:
+./new-workspace.sh --ide clion ~/projects/foo-workspace https://github.com/me/foo.git
+
+# Or one-shot from the published repo:
 curl -sL https://raw.githubusercontent.com/Assar63/zephyr-workspace-tools/main/new-workspace.sh \
-    | bash -s -- ~/projects/foo-workspace https://github.com/me/foo.git
+    | bash -s -- --ide vscode ~/projects/foo-workspace https://github.com/me/foo.git
 ```
 
 `<app-repo-url>` must point at a Zephyr application that contains a
@@ -34,6 +37,37 @@ The script uses [`uv`](https://docs.astral.sh/uv/) for the venv and
 package installs if it's on `PATH` (Zephyr's `requirements.txt` pulls
 ~80 packages, ~10× faster), and silently falls back to
 `python3 -m venv` + `pip` otherwise.
+
+## Project-supplied IDE setup (`--ide`)
+
+Bootstrapping with `--ide vscode` or `--ide clion` causes the script to
+look for an init script in the cloned project:
+
+```
+<workspace>/<app>/ide-setup/<ide>-init.sh
+```
+
+If that file exists, it's run with the workspace dir as `$1`. It can do
+whatever the project needs — drop `.vscode/` into the workspace root,
+materialize a `.code-workspace`, generate CLion `.idea/runConfigurations/`
+entries, copy launch configs, etc.
+
+This bootstrap is intentionally IDE-agnostic — no layout conventions are
+hard-coded here. Projects opt in by adding their own `ide-setup/` scripts.
+
+A skeleton init script:
+
+```sh
+#!/usr/bin/env bash
+# ide-setup/vscode-init.sh
+set -euo pipefail
+WORKSPACE_DIR="$1"
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# example: drop a curated .vscode/ into the workspace root
+mkdir -p "$WORKSPACE_DIR/.vscode"
+cp -n "$APP_DIR"/ide-setup/vscode/*.json "$WORKSPACE_DIR/.vscode/"
+```
 
 ## Install into a Zephyr workspace
 

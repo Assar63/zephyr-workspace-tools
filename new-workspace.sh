@@ -2,18 +2,26 @@
 # new-workspace.sh -- bootstrap a Zephyr T2 workspace from an app git repo.
 #
 # Usage:
-#   new-workspace.sh <workspace-dir> <app-repo-url> [<manifest-subdir>]
+#   new-workspace.sh [--ide vscode|clion] <workspace-dir> <app-repo-url> [<manifest-subdir>]
 #
 # Examples:
 #   ./new-workspace.sh ~/projects/foo-workspace https://github.com/me/foo.git
+#   ./new-workspace.sh --ide clion ~/projects/foo-workspace https://github.com/me/foo.git
 #   curl -sL https://raw.githubusercontent.com/Assar63/zephyr-workspace-tools/main/new-workspace.sh \
-#       | bash -s -- ~/projects/foo-workspace https://github.com/me/foo.git
+#       | bash -s -- --ide vscode ~/projects/foo-workspace https://github.com/me/foo.git
+#
+# IDE setup (--ide):
+#   When --ide=<name> is given, after the workspace is otherwise ready the
+#   bootstrap looks for an executable script at:
+#       <workspace>/<app>/ide-setup/<name>-init.sh
+#   and runs it with the workspace dir as $1. Each project decides what
+#   that script does -- this bootstrap stays IDE-agnostic.
 #
 # Optional env vars:
-#   TOOLS_REPO_URL  git URL of zephyr-workspace-tools (default below; edit after publishing)
+#   TOOLS_REPO_URL  git URL of zephyr-workspace-tools.
 #   TOOLS_REPO_DIR  local clone path of the tools repo
 #                   (default: $HOME/projects/zephyr-workspace-tools).
-#                   If this directory already exists it is reused as-is.
+#                   Reused as-is if it already exists.
 
 set -euo pipefail
 
@@ -22,8 +30,11 @@ DEFAULT_TOOLS_REPO_DIR="$HOME/projects/zephyr-workspace-tools"
 
 usage() {
 	cat >&2 <<EOF
-Usage: $(basename "$0") <workspace-dir> <app-repo-url> [<manifest-subdir>]
+Usage: $(basename "$0") [--ide vscode|clion] <workspace-dir> <app-repo-url> [<manifest-subdir>]
 
+  --ide <name>        Optional. After bootstrap, run the project's
+                      ide-setup/<name>-init.sh (if it exists) with the
+                      workspace dir as \$1. Accepted values: vscode, clion.
   <workspace-dir>     Directory to create for the new workspace.
   <app-repo-url>      Git URL of the Zephyr app (must contain west.yml).
   <manifest-subdir>   Optional. Directory name under the workspace where the
@@ -32,6 +43,44 @@ Usage: $(basename "$0") <workspace-dir> <app-repo-url> [<manifest-subdir>]
 EOF
 	exit 1
 }
+
+IDE=""
+POSITIONAL=()
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--ide)
+			[ $# -ge 2 ] || usage
+			IDE="$2"
+			shift 2
+			;;
+		--ide=*)
+			IDE="${1#--ide=}"
+			shift
+			;;
+		-h|--help)
+			usage
+			;;
+		--)
+			shift
+			POSITIONAL+=("$@")
+			break
+			;;
+		-*)
+			echo "Unknown option: $1" >&2
+			usage
+			;;
+		*)
+			POSITIONAL+=("$1")
+			shift
+			;;
+	esac
+done
+set -- "${POSITIONAL[@]}"
+
+case "$IDE" in
+	""|vscode|clion) ;;
+	*) echo "Unknown --ide value: '$IDE' (expected vscode or clion)" >&2; exit 1 ;;
+esac
 
 [ "$#" -ge 2 ] || usage
 
@@ -120,6 +169,16 @@ if [ ! -e activate.sh ]; then
 	log "Symlinking activate.sh and tools/ from $TOOLS_REPO_DIR"
 	ln -s "$TOOLS_REPO_DIR/activate.sh" activate.sh
 	ln -s "$TOOLS_REPO_DIR/tools" tools
+fi
+
+if [ -n "$IDE" ]; then
+	IDE_INIT="$WORKSPACE_DIR/$APP_DIR_NAME/ide-setup/${IDE}-init.sh"
+	if [ -f "$IDE_INIT" ]; then
+		log "Running project IDE init: $IDE_INIT"
+		bash "$IDE_INIT" "$WORKSPACE_DIR"
+	else
+		echo "Warning: --ide=$IDE requested but $IDE_INIT not found in project; skipping" >&2
+	fi
 fi
 
 cat <<EOF
