@@ -181,6 +181,15 @@ On Windows the script additionally re-copies `activate.ps1` + `tools\`
 from the tools repo into the workspace (Linux/macOS workspaces have
 those as symlinks, so they update automatically).
 
+**What it does not re-run:** the project's IDE init script
+(`<app>/scripts/ide-setup/<ide>-init.{sh,ps1}`). That means changes
+the project later makes to `west config` defaults, `.idea/runConfigurations/`
+contents, or `.code-workspace` generation **won't propagate** through
+`update-workspace`. If the project bumps its IDE setup, re-run
+`new-workspace.{sh,ps1}` against the same workspace dir with
+`--ide <name>` — every other step in the bootstrap is idempotent and
+will skip; only the IDE init re-runs.
+
 ### Automatic pre-commit install
 
 If the cloned app ships a `.pre-commit-config.yaml`, the bootstrap
