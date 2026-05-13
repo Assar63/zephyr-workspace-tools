@@ -155,6 +155,14 @@ matters if you're following a tutorial that invokes `pip install` from
 inside the venv. On the pip fallback path (no uv on `PATH`), the venv
 has pip as usual.
 
+### Automatic pre-commit install
+
+If the cloned app ships a `.pre-commit-config.yaml`, the bootstrap
+installs the `pre-commit` package into the workspace venv and runs
+`pre-commit install` inside the app's git checkout — so the hooks are
+armed without a separate manual step. No-op when the project doesn't
+ship a config.
+
 ### Optional Zephyr SDK install (`--toolchain` / `-Toolchain`)
 
 Off by default. Comma-separated short names — `arm`, `arm64`, `riscv` — or

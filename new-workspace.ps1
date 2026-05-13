@@ -211,6 +211,14 @@ Invoke-Native west update
 Log 'Installing Zephyr Python deps'
 Install-Pkg -r zephyr/scripts/requirements.txt
 
+$preCommitCfg = Join-Path $ManifestSubdir '.pre-commit-config.yaml'
+if (Test-Path $preCommitCfg) {
+    Log 'Installing pre-commit and activating hooks'
+    Install-Pkg pre-commit
+    Push-Location $ManifestSubdir
+    try { Invoke-Native pre-commit install } finally { Pop-Location }
+}
+
 if ($Toolchain) {
     Install-ZephyrSdk -Req $Toolchain
 }

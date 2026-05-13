@@ -224,6 +224,12 @@ west update
 log "Installing Zephyr Python deps"
 pip_install -r zephyr/scripts/requirements.txt
 
+if [ -f "$APP_DIR_NAME/.pre-commit-config.yaml" ]; then
+	log "Installing pre-commit and activating hooks"
+	pip_install pre-commit
+	( cd "$APP_DIR_NAME" && pre-commit install )
+fi
+
 if [ -n "$TOOLCHAIN" ]; then
 	install_zephyr_sdk "$TOOLCHAIN"
 fi
