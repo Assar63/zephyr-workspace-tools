@@ -85,6 +85,7 @@ prefers. Both call into the same workspace state.
 | File | Purpose |
 |------|---------|
 | `new-workspace.sh` / `new-workspace.ps1` | Bootstrap. Given a target directory and a Zephyr-app git URL, creates the workspace, clones the app, makes a venv, runs `west init -l` + `west update`, installs Zephyr's Python deps, and links `activate` + `tools/` from this repo. Bash version is `curl ... \| bash`-safe. |
+| `update-workspace.sh` / `update-workspace.ps1` | Pull updates into an existing workspace: `git pull` the tools repo + the app repo, refresh activate/tools copies (Windows), `west update`, re-install requirements.txt, upgrade west + pre-commit, re-run `pre-commit install`. Idempotent; runs from inside the workspace by default. |
 | `activate.sh` / `activate.ps1` | Activates the workspace's `.venv` and exports `ZEPHYR_BASE` / `ZEPHYR_SDK_INSTALL_DIR`. Source from the workspace root. |
 | `tools/flash.sh` / `tools/flash.ps1` | `west flash` wrapper. Wired into CLion run configs and VSCode tasks. |
 | `tools/gdb-server.sh` / `tools/gdb-server.ps1` | Starts openocd as a GDB server on `:3333`. Adjust the `-f board/...cfg` line for other boards. |
@@ -154,6 +155,31 @@ in west or Zephyr's build system calls `pip` at runtime, so this only
 matters if you're following a tutorial that invokes `pip install` from
 inside the venv. On the pip fallback path (no uv on `PATH`), the venv
 has pip as usual.
+
+## Updating an existing workspace
+
+```sh
+# Linux / macOS, from inside the workspace:
+~/projects/zephyr-bootstrap/update-workspace.sh
+
+# Or with explicit workspace dir:
+~/projects/zephyr-bootstrap/update-workspace.sh ~/projects/foo-workspace
+```
+
+```powershell
+# Windows, from inside the workspace:
+~\projects\zephyr-bootstrap\update-workspace.ps1
+```
+
+Pulls `git pull --ff-only` on both the tools repo and the cloned app
+repo (`west config manifest.path` tells the script which subdir is the
+app). Then `west update`, refresh of `zephyr/scripts/requirements.txt`,
+upgrade of `west` + `pre-commit`, and re-run of `pre-commit install`.
+Idempotent — safe to run any time.
+
+On Windows the script additionally re-copies `activate.ps1` + `tools\`
+from the tools repo into the workspace (Linux/macOS workspaces have
+those as symlinks, so they update automatically).
 
 ### Automatic pre-commit install
 
